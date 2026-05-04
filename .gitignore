@@ -1,0 +1,30 @@
+# Build artifacts — .skill bundles distributed via GitHub Releases, not git
+*.skill
+dist/
+build/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.pytest_cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Local Claude Code working dir (per-project memory should not be in source repo)
+.careful-coder/
+
+# Temp files
+*.tmp
+*.bak
+RELEASE_NOTES.tmp.md

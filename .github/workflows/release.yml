@@ -1,0 +1,174 @@
+name: Release
+
+# Triggers when a tag like v5.0-beta, v5.0, v5.1-rc1 is pushed.
+# Auto-detects pre-release from tag name (anything with a "-" suffix).
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write   # needed to create releases
+
+jobs:
+  release:
+    name: Build & publish .skill bundle
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source at tag
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history so CHANGELOG diffs work
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Verify lint passes
+        run: |
+          python3 scripts/lint.py
+          echo "lint: 7/7 green"
+
+      - name: Install skill-creator packager
+        # The packager script lives in Anthropic's skill-creator skill.
+        # For CI we vendor a minimal zip-based packager since we don't have
+        # access to the host's ~/.claude tree. If you have a private mirror
+        # of skill-creator, replace this step with a checkout of it and set
+        # SKILL_PACKAGER.
+        run: |
+          mkdir -p /tmp/packager/scripts
+          cat > /tmp/packager/scripts/package_skill.py <<'PY'
+          """Minimal CI packager — produces <skill_root>.skill (zip) at output dir.
+          Mirrors the contract scripts/build.sh expects from the host packager."""
+          import sys, os, zipfile, pathlib
+
+          if len(sys.argv) != 3:
+              print("usage: package_skill.py <skill_root> <output_dir>", file=sys.stderr)
+              sys.exit(2)
+
+          skill_root = pathlib.Path(sys.argv[1]).resolve()
+          output_dir = pathlib.Path(sys.argv[2]).resolve()
+          output_dir.mkdir(parents=True, exist_ok=True)
+
+          name = skill_root.name
+          out = output_dir / f"{name}.skill"
+
+          # Files to bundle: SKILL.md, CHANGELOG.md, README.md, LICENSE,
+          # references/**/*.md, assets/**/*.md, scripts/*.{py,sh}
+          # Exclude: .skill bundles, lockfile, .git, .github, RELEASE_NOTES, evals/
+          EXCLUDE_DIRS = {'.git', '.github', 'evals', 'dist', 'build', '__pycache__', '.venv', 'venv'}
+          EXCLUDE_NAMES = {'.gitignore', '.DS_Store'}
+
+          with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as zf:
+              for root, dirs, files in os.walk(skill_root):
+                  dirs[:] = [d for d in dirs if d not in EXCLUDE_DIRS]
+                  for fname in sorted(files):
+                      if fname in EXCLUDE_NAMES: continue
+                      if fname.endswith('.skill'): continue
+                      if fname.endswith('.tmp.md'): continue
+                      if fname == 'careful-coder.lock': continue
+                      fpath = pathlib.Path(root) / fname
+                      arcname = fpath.relative_to(skill_root)
+                      zf.write(fpath, arcname)
+
+          print(f"wrote {out} ({out.stat().st_size} bytes)")
+          PY
+          echo "SKILL_PACKAGER=/tmp/packager/scripts/package_skill.py" >> $GITHUB_ENV
+
+      - name: Build .skill bundle
+        run: |
+          bash scripts/build.sh "$GITHUB_WORKSPACE"
+          ls -lh *.skill
+
+      - name: Verify bundle hash matches lockfile
+        run: |
+          BUNDLE=$(ls *.skill | head -1)
+          ACTUAL=$(sha256sum "$BUNDLE" | awk '{print $1}')
+          EXPECTED=$(grep -E "[0-9a-f]{64}  $BUNDLE" careful-coder.lock | awk '{print $1}' || true)
+          echo "bundle:   $BUNDLE"
+          echo "actual:   $ACTUAL"
+          echo "expected: $EXPECTED"
+          if [ -z "$EXPECTED" ]; then
+            echo "WARN: no expected hash in lockfile — first build of this version, accepting actual."
+          elif [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "ERROR: bundle hash drift!"
+            exit 1
+          fi
+
+      - name: Determine release flags
+        id: flags
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          if [[ "$TAG" == *-* ]]; then
+            echo "prerelease=true"  >> $GITHUB_OUTPUT
+            echo "kind=Pre-release"  >> $GITHUB_OUTPUT
+          else
+            echo "prerelease=false" >> $GITHUB_OUTPUT
+            echo "kind=Stable"       >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate release notes
+        id: notes
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          NOTES_FILE="$RUNNER_TEMP/release_notes.md"
+
+          # Prefer a tag-specific RELEASE_NOTES.md if present
+          if [ -f "RELEASE_NOTES.md" ]; then
+            cp RELEASE_NOTES.md "$NOTES_FILE"
+          else
+            # Fall back to the matching CHANGELOG section
+            awk -v tag="$TAG" '
+              $0 ~ "^## " tag { found=1; print; next }
+              found && /^## v/ && $0 !~ tag { exit }
+              found { print }
+            ' CHANGELOG.md > "$NOTES_FILE"
+
+            if [ ! -s "$NOTES_FILE" ]; then
+              echo "Release $TAG" > "$NOTES_FILE"
+            fi
+          fi
+
+          # Append bundle metadata
+          BUNDLE=$(ls *.skill | head -1)
+          BUNDLE_HASH=$(sha256sum "$BUNDLE" | awk '{print $1}')
+          BUNDLE_SIZE=$(du -h "$BUNDLE" | awk '{print $1}')
+          {
+            echo ""
+            echo "---"
+            echo ""
+            echo "### Artifact"
+            echo ""
+            echo "- File: \`$BUNDLE\`"
+            echo "- Size: $BUNDLE_SIZE"
+            echo "- SHA-256: \`$BUNDLE_HASH\`"
+          } >> "$NOTES_FILE"
+
+          echo "notes_file=$NOTES_FILE" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BUNDLE=$(ls *.skill | head -1)
+          PRERELEASE_FLAG=""
+          if [ "${{ steps.flags.outputs.prerelease }}" = "true" ]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+
+          gh release create "${GITHUB_REF_NAME}" \
+            "$BUNDLE" \
+            --title "${GITHUB_REF_NAME} — ${{ steps.flags.outputs.kind }}" \
+            --notes-file "${{ steps.notes.outputs.notes_file }}" \
+            $PRERELEASE_FLAG
+
+      - name: Summary
+        run: |
+          echo "Released ${GITHUB_REF_NAME}"
+          echo "Type:    ${{ steps.flags.outputs.kind }}"
+          gh release view "${GITHUB_REF_NAME}" --json url,assets -q '.url,.assets[].name'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
