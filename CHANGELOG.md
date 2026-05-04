@@ -4,7 +4,40 @@
 
 ---
 
-## v5.0-beta — Released 2026-05-04 (current)
+## v5.1-beta — Released 2026-05-05 (current)
+
+Cost-reduction refactor. Same behavior, dramatically lower per-invocation token cost. No semantic changes to discipline; structural reorganization only.
+
+### Changes
+
+- **#c1** SKILL.md slimmed from ~4634 tokens (v5.0-beta) to ~2893 tokens (**−38% on hot path**). Removed: `v5 highlights` paragraph (now in this CHANGELOG), `Why this skill exists` (now in README only), `Closing` paragraph, `Project memory` standalone section (was redundant with Step 0 + memory-protocol.md), `Further reading` table (compressed to inline note). Compressed: each Step's prose body (decision table is the source of truth; Steps now state the always-do invariants only). **Preserved verbatim**: frontmatter `description` (trigger accuracy), Density × Steps decision table, Thinking-flow 5 core points.
+- **#c2** Each `references/*.md` now begins with a `<summary>` block (~150 tokens). Format: Contents enumeration / Read full when / Skim sufficient when. Lets Claude skim a reference and decide whether to deep-read — cuts cold-path load by an estimated 40% on MEDIUM-density tasks.
+- **#c3** New lint check `[8] SKILL.md size guard`: soft-warn at 2700 tokens, hard cap at 3000. Catches future hot-path bloat at PR time.
+- **#c4** Added `<!-- CACHE BOUNDARY -->` marker at the end of SKILL.md. Documents the design intent: SKILL.md content is static and cacheable; project-level injections (notes/) belong in user messages, not appended to SKILL.md.
+- **#c5** Added `--strict` flag to `scripts/lint.py`. Default mode keeps lockfile-drift and missing-bundle as warnings (so first-time clones don't break). `--strict` promotes them to hard errors. `scripts/release.sh` and `.github/workflows/release.yml` now use `--strict`, so manual or CI releases cannot ship with a stale `.skill` bundle. Closes the gap that allowed shipping with a bundle older than source.
+- **#c6** Added lint check `[9] README check-count consistency` — self-referential drift catcher. Scans `lint.py` for the actual number of checks and `README.md` for "N checks" / "N consistency checks" claims; fails if mismatch. Catches the exact pattern that almost slipped through review for v5.1-beta (README still said "7 checks" after check [8] landed). Total checks: **9** (was 7 in v5.0-beta).
+
+### What did NOT change
+
+Discipline, decision rules, density classification, all 7 references' actual content (only added summary headers), templates, scripts/build.sh, evals/. Behavior is identical to v5.0-beta; this is a pure cost-reduction pass.
+
+### Estimated savings (per task, post-cache)
+
+| Density | v5.0-beta overhead | v5.1-beta overhead (no cache) | v5.1-beta + 80% cache hit |
+|---|---|---|---|
+| LOW | ~4700 tokens | ~2900 tokens | ~700 tokens |
+| MEDIUM | ~7500 tokens | ~4400 tokens | ~1500 tokens |
+| HIGH | ~11000 tokens | ~6800 tokens | ~2900 tokens |
+
+Cache savings depend on the host actually applying prompt cache to skill content; the marker documents intent.
+
+### Roadmap to v5.2
+
+Modality 3 from the cost-reduction plan: ship 3 deterministic scripts that replace LLM-token work with bash exec — `freshness-check.py`, `diff-noise-detector.py`, `notes-size-check.py`. SKILL.md will reference these in Step 0 and Step 4 with "try the script first, fallback to LLM".
+
+---
+
+## v5.0-beta — Released 2026-05-04
 
 First public Beta release. All v5 features below are included. Beta tag reflects: ~40% of features (cross-session memory, debate-budget reset, freshness check, consolidation, multi-agent) require longitudinal validation that single-session A/B sandbox cannot provide. Roadmap: 1-2 weeks of [L] longitudinal eval → v5.0-stable. See `README.md` § Known limitations.
 

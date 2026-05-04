@@ -27,10 +27,10 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Verify lint passes
+      - name: Verify lint passes (default mode — bundle hasn't been built yet at this step)
         run: |
           python3 scripts/lint.py
-          echo "lint: 7/7 green"
+          echo "lint default mode: green"
 
       - name: Install skill-creator packager
         # The packager script lives in Anthropic's skill-creator skill.
@@ -97,6 +97,11 @@ jobs:
             echo "ERROR: bundle hash drift!"
             exit 1
           fi
+
+      - name: Verify lint --strict passes (post-build state must be clean)
+        run: |
+          python3 scripts/lint.py --strict
+          echo "lint --strict: green — safe to release"
 
       - name: Determine release flags
         id: flags

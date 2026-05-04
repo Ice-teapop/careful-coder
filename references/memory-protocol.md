@@ -2,6 +2,23 @@
 
 This document defines `.careful-coder/` maintenance: what it's for, what it's *not* for (vs. host memory), how to lazy-init it, how to load it density-aware, how to keep it fresh, and how to keep it bounded.
 
+<summary>
+Contents:
+- § I: division of labor with host memory (notes/ = project-local technical facts only; rule + decision flow)
+- § II: location (`.careful-coder/` layout; `_debate-log.md` outside notes/; git-commit opt-in stored once)
+- § III: lazy initialization (precise "concrete trigger" list + first-write flow + config.json schema v1)
+- § IV: Step 0 loading flow (existence → density-aware read → debate-budget defensive reset → freshness → size-budget)
+- § V: freshness sanity check (density-aware scope: LOW none / MEDIUM partial / HIGH full)
+- § VI: write triggers + privacy guard (regex auto-redact + manual self-check categories)
+- § VII: on-demand consolidation (no auto-thresholds; backup to `_archive/`)
+- § VIII: size budget (1500 lines of *content*; skeleton excluded)
+- § IX: cross-session continuity (notes vs reality disagreement)
+- § X: required template fields (REQUIRED / 必填 vs OPTIONAL / 可选)
+
+Read full when: designing the first init for a new project; debugging notes drift; size budget hit; consolidating; adding a new field convention.
+Skim sufficient when: just need to confirm what counts as "concrete" trigger, or what privacy guard does NOT auto-catch.
+</summary>
+
 ---
 
 ## I. Division of labor with host memory

@@ -2,6 +2,19 @@
 
 Applies when changes span frontend / backend / multiple services, involving multiple languages or repositories. Core goal: **field names, types, paths, and error formats stay consistent across all language sides**, preventing time bombs like "frontend sends `userId`, backend expects `user_id`".
 
+<summary>
+Contents:
+- § I: source-of-truth priority (OpenAPI > GraphQL > proto > TS interface / Pydantic > JSON Schema > hand-written contract in notes/)
+- § II: change patterns — frontend-only / backend-only / both-at-once (most common, recommended order)
+- § III: field naming conventions per language (snake_case vs camelCase) + alias-at-boundary recommendation
+- § IV: unified error response shape
+- § V: self-check additions for multi-language changes
+- § VI: 5 typical antipatterns ("frontend will guess backend", "any types now", "tests pass ≠ fits together", etc.)
+
+Read full when: making a frontend ↔ backend contract change; renaming a field used by multiple services; designing a new API; reviewing whether a "looks consistent" change actually is.
+Skim sufficient when: single-language change with no contract surface; or you just need the recommended order for sync changes.
+</summary>
+
 ---
 
 ## I. Core principle: if a contract definition exists, treat it as the source of truth

@@ -8,6 +8,19 @@ This document is the **single source of truth** for:
 
 SKILL.md does not duplicate any of these — it links here.
 
+<summary>
+Contents:
+- § I: per-language ★/★★/★★★ run commands (Python, JS/TS, Go, Rust, frontend) + test-discovery sanity check (0-tests-ran ≠ pass)
+- § II: diff self-review (noise-diff catalog, dependency check) — high-density only
+- § III: requirements + scope-boundary check-off — high-density only
+- § IV: rollback playbook (set up before, re-confirm after; problem-severity table)
+- § V: reporting templates by density (LOW 1 line, MEDIUM 3-5 bullets, HIGH full template)
+- § VI: forbidden phrasings blacklist (canonical, every density)
+
+Read full when: about to write the report; about to verify; need exact run command for a language; hit a problem during self-check and need the severity-handling table.
+Skim sufficient when: already know which tier you reached and don't need a per-language reminder — section headings tell you where the answer is.
+</summary>
+
 ---
 
 ## I. Run verification (★★★ → ★★ → ★)

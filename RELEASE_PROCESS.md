@@ -59,7 +59,11 @@ After the first push, the `.github/workflows/lint.yml` workflow should run and p
 - `CHANGELOG.md` should have a top section `## <new-tag> — Released YYYY-MM-DD (current)`.
 - `RELEASE_NOTES.md` should describe **this** release (it gets uploaded as the release body verbatim).
 - `SKILL.md` H1 should match the new version.
-- Lint will catch most drift (`python3 scripts/lint.py`).
+- Lint will catch most drift. **Always use `--strict` before releasing**:
+  ```bash
+  python3 scripts/lint.py --strict   # required before any manual release; release.sh runs this for you
+  ```
+  `--strict` promotes lockfile-drift and missing-bundle warnings to hard errors, so you cannot accidentally ship with stale artifacts.
 
 ### B. Commit any open work
 

@@ -121,9 +121,9 @@ fi
 
 say "Pre-flight: OK"
 
-# ---------- lint ----------
-say "Running lint..."
-python3 scripts/lint.py || die "lint failed — fix issues before releasing"
+# ---------- lint (strict mode — release must not ship with stale lockfile / missing bundle) ----------
+say "Running lint --strict..."
+python3 scripts/lint.py --strict || die "lint --strict failed — rerun scripts/build.sh and recheck before releasing"
 
 # ---------- build ----------
 say "Building .skill bundle..."

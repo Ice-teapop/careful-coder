@@ -6,6 +6,17 @@ This document defines two classes of multi-agent usage:
 
 The main agent works solo by default. Any multi-agent activation must follow the sequence: **propose → authorize → execute**.
 
+<summary>
+Contents:
+- § I: parallel orchestration — when to propose, proposal phrasing, sub-agent boundary derivation, main-agent coordination duties
+- § II: three-way debate — trigger + cost estimate, budget storage in config.json, monthly reset, budget-hit silent skip, audit log, execution flow (independent analysis → debate → consensus/arbitration), supervision duties, post-debate handling
+- § III: sub-agent input template (verbatim — copy/fill)
+- § IV: cost-control principles (default solo, strict triggers, capped rounds, audit, fail-to-solo)
+
+Read full when: user accepted a debate proposal (need exact execution flow); designing a parallel sub-agent dispatch (need boundary procedure + input template); estimating debate cost.
+Skim sufficient when: just need cost factor (~6× single-agent), or budget-reset behavior, or "default = solo" reminder.
+</summary>
+
 ---
 
 ## I. Parallel task orchestration

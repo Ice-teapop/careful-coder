@@ -215,10 +215,92 @@ def check_dup_reporting_template(files: dict[Path, str]) -> list[str]:
     return issues
 
 
+# Token estimate constants for check_skill_size.
+# Heuristic: ~4 chars/token on mixed English+Chinese content (BPE tokenizers in
+# this range for Anthropic models). Calibrated against tiktoken o200k_base on
+# the v5.0-beta SKILL.md (18539 chars → ~4634 tokens, ratio 4.0).
+SKILL_TOKEN_CHARS_PER = 4
+SKILL_TOKEN_WARN = 2700   # design target — over this, file is starting to bloat
+SKILL_TOKEN_HARD = 3000   # hard cap — over this, fails the lint
+
+
+def check_readme_check_count(root: Path) -> list[str]:
+    """README's claimed lint check count must match lint.py's actual count.
+
+    Counts checks by scanning lint.py for `print(f"\\n[N] ..."` patterns —
+    each numbered check prints a banner like that. Counts README claims by
+    looking for `N checks` / `N consistency checks` patterns.
+
+    This check is itself counted, so adding it bumps the total — README
+    must say the new total or this check fails.
+    """
+    issues = []
+    readme = root / "README.md"
+    lint_py = root / "scripts" / "lint.py"
+    if not readme.exists() or not lint_py.exists():
+        return issues
+
+    # Count actual checks by scanning print(f"\n[N] ...") patterns in main()
+    lint_text = lint_py.read_text(encoding="utf-8")
+    actual_nums = sorted(set(int(n) for n in re.findall(r'print\(f?["\'](?:\\n)?\[(\d+)\]', lint_text)))
+    actual = len(actual_nums)
+    if not actual:
+        return issues  # parsing didn't find any — bail rather than false-positive
+
+    # Find every "N checks" / "N consistency checks" claim in README
+    readme_text = readme.read_text(encoding="utf-8")
+    claims = re.findall(r'(\d+)\s+(?:consistency\s+)?checks?(?=[:\s.])', readme_text, re.IGNORECASE)
+
+    if not claims:
+        return issues  # no claim to verify
+
+    for claim_str in claims:
+        claim = int(claim_str)
+        if claim != actual:
+            issues.append(
+                f"  README says '{claim} checks' but lint.py defines {actual} (numbered {actual_nums}). "
+                f"Update README.md to '{actual} checks' and list the new ones."
+            )
+    return issues
+
+
+def check_skill_size(root: Path) -> list[str]:
+    """SKILL.md must stay lean — it's loaded on every skill invocation.
+
+    Returns issues only for HARD-cap violations. Reports a soft-warn line if
+    over WARN but under HARD; counts toward total only if over HARD.
+    """
+    issues = []
+    skill_md = root / "SKILL.md"
+    if not skill_md.exists():
+        return []
+    char_count = len(skill_md.read_text(encoding="utf-8"))
+    token_estimate = char_count // SKILL_TOKEN_CHARS_PER
+    # Use sentinel prefixes (HARD: / WARN: / OK:) so the runner can categorize
+    # without parsing prose. Reading prose for "hard cap" once misclassified the
+    # warn line because the hint mentioned the hard cap value too.
+    if token_estimate > SKILL_TOKEN_HARD:
+        issues.append(
+            f"  HARD: SKILL.md ~{token_estimate} tokens exceeds {SKILL_TOKEN_HARD} cap. "
+            "Trim or move content into references/. Hot-path bloat is the #1 cost regression."
+        )
+    elif token_estimate > SKILL_TOKEN_WARN:
+        issues.append(
+            f"  WARN: SKILL.md ~{token_estimate} tokens (target {SKILL_TOKEN_WARN}, cap {SKILL_TOKEN_HARD}). "
+            "Approaching the cap — review before adding more."
+        )
+    else:
+        issues.append(f"  OK: SKILL.md ~{token_estimate} tokens (under {SKILL_TOKEN_WARN} target).")
+    return issues
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--skill-root", type=Path, default=Path(__file__).parent.parent,
                         help="Skill root directory (defaults to parent of scripts/)")
+    parser.add_argument("--strict", action="store_true",
+                        help="Promote warning-only checks (lockfile freshness, missing bundle) to hard errors. "
+                             "Use this in CI and before any manual release.")
     args = parser.parse_args()
 
     root = args.skill_root.resolve()
@@ -291,14 +373,18 @@ def main() -> int:
     else:
         print("  OK")
 
-    # 5. Lockfile freshness (only warn, don't fail — first-time-build scenario is normal)
+    # 5. Lockfile freshness — warning-only by default (first-time clones haven't built yet);
+    #    promoted to hard error under --strict (catches stale-bundle releases)
     print("\n[5] Lockfile freshness (careful-coder.lock vs source):")
     lock_issues = check_lockfile_freshness(root)
     if lock_issues:
         for line in lock_issues:
             print(line)
-        # Warning only — don't bump total_issues. Fresh checkouts haven't built yet.
-        print("  (warning only; rerun scripts/build.sh if drift is unintended)")
+        if args.strict:
+            print("  --strict: promoted to hard error.")
+            total_issues += len(lock_issues)
+        else:
+            print("  (warning only; rerun scripts/build.sh if drift is unintended; use --strict to enforce)")
     else:
         print("  OK")
 
@@ -312,17 +398,42 @@ def main() -> int:
     else:
         print("  OK")
 
-    # 7. .skill bundle hash matches lockfile (warning only — bundle may not have been built yet)
+    # 7. .skill bundle hash matches lockfile.
+    #    Real drift always fails; missing bundle is warning-only by default,
+    #    promoted to hard error under --strict.
     print("\n[7] Bundle hash consistency (.skill vs careful-coder.lock):")
     bundle_issues = check_bundle_hash(root)
     if bundle_issues:
         for line in bundle_issues:
             print(line)
-        # Treat real drift as a hard issue, but a missing bundle as a warning
         if any("bundle drift" in line for line in bundle_issues):
             total_issues += sum(1 for line in bundle_issues if "bundle drift" in line)
+        elif args.strict:
+            print("  --strict: missing-bundle promoted to hard error (release requires a bundle).")
+            total_issues += len(bundle_issues)
         else:
-            print("  (warning only; not counted toward total)")
+            print("  (warning only; not counted toward total; use --strict to enforce)")
+    else:
+        print("  OK")
+
+    # 8. SKILL.md size guard (hot-path bloat is the #1 cost regression vector)
+    print(f"\n[8] SKILL.md size guard (target ≤{SKILL_TOKEN_WARN} tokens, hard ≤{SKILL_TOKEN_HARD}):")
+    size_issues = check_skill_size(root)
+    if size_issues:
+        for line in size_issues:
+            print(line)
+        # Only HARD: prefix violations count toward total
+        total_issues += sum(1 for line in size_issues if line.lstrip().startswith("HARD:"))
+    else:
+        print("  OK")
+
+    # 9. README check-count consistency (self-referential drift catcher)
+    print("\n[9] README check-count consistency (vs lint.py):")
+    readme_issues = check_readme_check_count(root)
+    if readme_issues:
+        for line in readme_issues:
+            print(line)
+        total_issues += len(readme_issues)
     else:
         print("  OK")
 

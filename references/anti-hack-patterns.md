@@ -2,6 +2,18 @@
 
 This document is the **mandatory scan after writing code**. Used in Step 3 and Step 4.
 
+<summary>
+Contents:
+- § I: hardcode scan checklist by category (network / credentials / paths / magic values / debug residue / commented code / validation bypass) — bad ❌ → good ✅ pairs
+- § II: scope-creep prevention — what counts, why "just doing it" is wrong, the right phrasing, inseparable-dependency narrow test (Pass + Fail examples)
+- § III: counterintuitive-logic catalog (8 patterns: silent mutation, ordering deps, name collisions, error swallowing, over-clever one-liners, misleading names, side-effects in exception paths, test-code-in-prod)
+- § IV: post-write 7-question scan checklist
+- § V: tools that automate part of this (gitleaks, ruff, eslint, etc.)
+
+Read full when: doing the Step 3 hardcode scan; tempted to do a drive-by fix and need the narrow test; designing a function with shared state / error handling / state machine.
+Skim sufficient when: just need the scan checklist (§ IV) or the "is this scope creep?" decision (§ II.4).
+</summary>
+
 ---
 
 ## I. Hardcode scan checklist

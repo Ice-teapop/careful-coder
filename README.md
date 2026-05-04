@@ -97,7 +97,7 @@ careful-coder-v5/
 │   └── memory-protocol.md
 ├── assets/notes-templates/     # bilingual REQUIRED/必填 templates
 └── scripts/
-    ├── lint.py                 # 7 consistency checks
+    ├── lint.py                 # 9 consistency checks (run --strict in CI / before release)
     └── build.sh                # reproducible bundle build
 ```
 
@@ -136,10 +136,11 @@ These features are architected and unit-coherent; their real-world value will be
 ### Run the lint suite
 
 ```bash
-python3 scripts/lint.py
+python3 scripts/lint.py            # default mode (warnings allowed for first-time clones)
+python3 scripts/lint.py --strict   # strict mode (warnings → errors; required in CI / before release)
 ```
 
-7 checks: cross-reference validity, forbidden-phrasings single source, reporting template single source, tier terminology consistency, lockfile freshness, version label consistency, .skill bundle hash drift.
+9 checks: cross-reference validity, forbidden-phrasings single source, reporting template single source, tier terminology consistency, lockfile freshness (warning by default; hard error under `--strict`), version label consistency, `.skill` bundle hash drift, SKILL.md size guard (soft 2700 / hard 3000 tokens — prevents hot-path bloat), README check-count consistency (self-referential drift catcher: this very paragraph stays in sync with `lint.py`).
 
 ### Rebuild the bundle
 

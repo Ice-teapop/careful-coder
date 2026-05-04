@@ -2,6 +2,18 @@
 
 This document defines what counts as "hard / error-prone / runtime-impacting". The main agent **should not judge difficulty by gut feel**; it should check items against this list one by one.
 
+<summary>
+Contents:
+- § I: 10-category hard-difficulty checklist (concurrency / IPC / regex / security / state machines / advanced lib API / perf-evidence-required / DB migrations / time/money/floats / browser quirks)
+- § II: runtime-path determination (counts vs. doesn't)
+- § III: impact-scope determination (user-visible features)
+- § IV: combined judgment template (a ∧ b ∧ c)
+- § V: explicit "doesn't count as hard" list (CRUD, simple field add, tests, etc.)
+
+Read full when: deciding whether to propose three-way debate; need exact criteria for a borderline case.
+Skim sufficient when: just need quick yes/no on (a); the section headings tell you which category your task touches.
+</summary>
+
 ---
 
 ## I. Hard-difficulty checklist (matching any item satisfies condition (a))

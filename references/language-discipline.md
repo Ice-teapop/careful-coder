@@ -2,6 +2,21 @@
 
 This document defines the language, density, and word-choice standards for the thinking flow.
 
+<summary>
+Contents:
+- § I: language assignments (English thinking default + non-English-project exception + user override)
+- § II: density tier definitions (LOW / MEDIUM / HIGH with profile + adaptive judgment template + density self-check)
+- § II.4: mid-task re-classification (triggers, action, one-way upward only)
+- § II.5: per-tier forbidden behaviors (LOW/MEDIUM/HIGH "do NOT" lists)
+- § III: vague-word blacklist (English + Chinese, with "应该" exception for conditional statements)
+- § IV: standard "I don't know" phrasings (EN + CN templates)
+- § V: pre-send English-leak check (allowed-English identifiers + leak-pattern table + check procedure)
+- § VI: 6 self-check questions
+
+Read full when: designing density classification for a borderline task; user reported leaked English; vague language was flagged in last reply; need exact "应该" allowed/forbidden cases.
+Skim sufficient when: just need a quick reminder of the vague-word substitution; § headings tell you where.
+</summary>
+
 ---
 
 ## I. Language assignments
