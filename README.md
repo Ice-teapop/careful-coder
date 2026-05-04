@@ -97,7 +97,7 @@ careful-coder-v5/
 │   └── memory-protocol.md
 ├── assets/notes-templates/     # bilingual REQUIRED/必填 templates
 └── scripts/
-    ├── lint.py                 # 9 consistency checks (run --strict in CI / before release)
+    ├── lint.py                 # 10 consistency checks (run --strict in CI / before release)
     └── build.sh                # reproducible bundle build
 ```
 
@@ -140,7 +140,7 @@ python3 scripts/lint.py            # default mode (warnings allowed for first-ti
 python3 scripts/lint.py --strict   # strict mode (warnings → errors; required in CI / before release)
 ```
 
-9 checks: cross-reference validity, forbidden-phrasings single source, reporting template single source, tier terminology consistency, lockfile freshness (warning by default; hard error under `--strict`), version label consistency, `.skill` bundle hash drift, SKILL.md size guard (soft 2700 / hard 3000 tokens — prevents hot-path bloat), README check-count consistency (self-referential drift catcher: this very paragraph stays in sync with `lint.py`).
+10 checks: cross-reference validity, forbidden-phrasings single source, reporting template single source, tier terminology consistency, lockfile freshness (warning by default; hard error under `--strict`), version label consistency, `.skill` bundle hash drift, SKILL.md size guard (soft 2700 / hard 3000 tokens — prevents hot-path bloat), README check-count consistency (self-referential drift catcher: this very paragraph stays in sync with `lint.py`), RELEASE_NOTES version match (catches release-body drift — the failure that motivated this check: shipping v5.1-beta with a body that said "v5.0-beta").
 
 ### Rebuild the bundle
 

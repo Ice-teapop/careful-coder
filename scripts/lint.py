@@ -185,6 +185,41 @@ def check_version_match(root: Path) -> list[str]:
     return issues
 
 
+def check_release_notes_version(root: Path) -> list[str]:
+    """RELEASE_NOTES.md's first H1 declared version must match CHANGELOG.md's top entry.
+
+    Catches the v5.0→v5.1 release-body drift where RELEASE_NOTES.md wasn't
+    updated for the new version, so the GitHub release body referenced the
+    wrong version number even though the tag/title were correct.
+    """
+    issues = []
+    notes = root / "RELEASE_NOTES.md"
+    changelog = root / "CHANGELOG.md"
+    if not notes.exists() or not changelog.exists():
+        return issues  # optional — both must exist for this check to apply
+
+    version_re = r"v\d+(?:\.\d+)*(?:-[A-Za-z0-9.]+)?"
+    notes_text = notes.read_text(encoding="utf-8")
+    m = re.search(rf"^#\s+({version_re})\b", notes_text, re.MULTILINE)
+    notes_version = m.group(1) if m else None
+
+    cl_text = changelog.read_text(encoding="utf-8")
+    cl_versions = re.findall(rf"^##\s+({version_re})\b", cl_text, re.MULTILINE)
+    cl_top_version = cl_versions[0] if cl_versions else None
+
+    if notes_version is None:
+        issues.append(f"  RELEASE_NOTES.md first H1 doesn't declare a version (expected '# v... — ...' format)")
+        return issues
+    if cl_top_version is None:
+        return issues  # check_version_match already reports this
+    if notes_version != cl_top_version:
+        issues.append(
+            f"  RELEASE_NOTES.md says {notes_version}, CHANGELOG.md top is {cl_top_version} — "
+            f"update RELEASE_NOTES.md to describe THIS release before tagging/releasing"
+        )
+    return issues
+
+
 def check_dup_forbidden_phrasings(files: dict[Path, str]) -> list[str]:
     """Forbidden-phrasings list should only appear in self-check-protocol.md.
 
@@ -434,6 +469,16 @@ def main() -> int:
         for line in readme_issues:
             print(line)
         total_issues += len(readme_issues)
+    else:
+        print("  OK")
+
+    # 10. RELEASE_NOTES.md version match (forward-looking; catches stale release-body)
+    print("\n[10] RELEASE_NOTES version match (vs CHANGELOG.md):")
+    rn_issues = check_release_notes_version(root)
+    if rn_issues:
+        for line in rn_issues:
+            print(line)
+        total_issues += len(rn_issues)
     else:
         print("  OK")
 

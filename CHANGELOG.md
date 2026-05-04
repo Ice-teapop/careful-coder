@@ -8,6 +8,14 @@
 
 Cost-reduction refactor. Same behavior, dramatically lower per-invocation token cost. No semantic changes to discipline; structural reorganization only.
 
+### v5.1-beta hotfix-1 — RELEASE_NOTES drift catcher (2026-05-05)
+
+The initial v5.1-beta release shipped with the GitHub release body still saying "v5.0-beta" because `RELEASE_NOTES.md` was never updated for the new version (the file's first H1 was stale). Tag and title were correct; only the body text was wrong. Forward-fix only — the live v5.1-beta release body remains as-shipped.
+
+- **#h9** Rewrote `RELEASE_NOTES.md` for v5.1-beta — new heading, v5.1-beta-specific "what's new" content (size cuts, summary blocks, lint [8]/[9]/[10], `--strict`, release pipeline), updated install instructions and roadmap.
+- **#h10** Added lint check `[10] RELEASE_NOTES version match` — first H1 of `RELEASE_NOTES.md` must declare the same version as `CHANGELOG.md`'s top `## vN` entry. Same meta-fix pattern as check `[6]` (SKILL.md vs CHANGELOG) and check `[9]` (README vs lint.py): every recurring drift class gets its own lint rule.
+- README updated: `9 consistency checks` → `10 consistency checks` (caught automatically by check `[9]` once `[10]` was wired into main).
+
 ### Changes
 
 - **#c1** SKILL.md slimmed from ~4634 tokens (v5.0-beta) to ~2893 tokens (**−38% on hot path**). Removed: `v5 highlights` paragraph (now in this CHANGELOG), `Why this skill exists` (now in README only), `Closing` paragraph, `Project memory` standalone section (was redundant with Step 0 + memory-protocol.md), `Further reading` table (compressed to inline note). Compressed: each Step's prose body (decision table is the source of truth; Steps now state the always-do invariants only). **Preserved verbatim**: frontmatter `description` (trigger accuracy), Density × Steps decision table, Thinking-flow 5 core points.
